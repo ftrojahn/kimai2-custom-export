@@ -170,7 +170,7 @@
           {% else %}
           <td colspan="2"></td>
           {% endif %}
-          <td class="totals duration">{{ duration|duration|date('H:i') }} h</td>
+          <td class="totals duration">{{ duration / 3600 }} h</td>
           {% if showRateColumn %}
           <td class="totals cost">{% if currency is not null %}{{ rate|money(currency) }}{% endif %}</td>
           {% endif %}

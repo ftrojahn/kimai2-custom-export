@@ -10,7 +10,11 @@
 {%- set customer = query.customers|length == 1 ? query.customers.0 : null -%}
 {% set project = '' %}
 {% for summary in summaries %}
-  {% set project = summary.project %}
+    {% if project is not empty %}
+         {% set project = project ~ '|' ~ summary.project %}
+    {% else %}
+         {% set project = summary.project %}
+    {% endif %}
 {% endfor %}
 
 {% block styles %}
@@ -96,9 +100,9 @@
   {% block summary_header %}
     <h2>{{ 'custom_document_title'|trans({}, 'customexport') }}</h2>
 
-    <div style="width:300px;">
+    <div style="width:890px;">
       <p class="left">Kunde:</p> <p class="right"><strong>{{ summaries|first.customer }}</strong></p>
-      <p class="left">Projekt:</p> <p class="right"><strong>{{ summaries|first.project }}</strong></p>
+      <p class="left">Projekt(e):</p> <p class="right"><strong>{{ project }}</strong></p>
       {% if projectRate %}
         <p class="left">Stundensatz:</p> <p class="right"><strong>{{ projectRate }} €</strong></p>
       {% endif %}

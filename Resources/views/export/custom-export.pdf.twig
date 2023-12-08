@@ -98,13 +98,135 @@
 
     <div style="width:300px;">
       <p class="left">Kunde:</p> <p class="right"><strong>{{ summaries|first.customer }}</strong></p>
-      <p class="left">Projekt:</p> <p class="right"><strong>{{ summaries|first.project }}</strong></p>
       {% if projectRate %}
-        <p class="left">Stundensatz:</p> <p class="right"><strong>{{ projectRate }} €</strong></p>
+        <p class="left">Stundensatz:</p> <p class="right"><strong>{{ projectRate }} <E2><82><AC></strong></p>
       {% endif %}
       <p class="left" style="margin-bottom: 10px;">{{ 'export.period'|trans }}:</p><p class="right"><strong>{{ query.begin|date('d.m.Y') }} - {{ query.end|date('d.m.Y') }}</strong></p>
       <div style="clear: both; margin: 0pt; padding: 0pt; "></div>
     </div>
+
+
+    <table class="items">
+        <thead>
+        <tr>
+            {% block summary_head_row_start %}{% endblock %}
+            {% for summaryColumn in summaryColumns %}
+                {% if summaryColumn == 'customer' %}
+                  <!--  <th>{{ 'customer'|trans }}</th> -->
+                {% elseif summaryColumn == 'project' %}
+                    <th align="left">{{ 'project'|trans }}</th>
+                {% else %}
+                    <th class="center">{{ summaryColumn|trans }}</th>
+                {% endif %}
+            {% endfor %}
+            {% block summary_head_row_end %}{% endblock %}
+        </tr>
+        </thead>
+        <tbody>
+        {% set customer = null %}
+        {% set customerDuration = 0 %}
+        {% set customerRate = 0 %}
+        {% set customerInternalRate = 0 %}
+        {% set customerCurrency = null %}
+        {% set customerCount = 0 %}
+        {% set multiCurrency = false %}
+        {% set totalDuration = 0 %}
+        {% set totalInternalRate = 0 %}
+        {% set totalRate = 0 %}
+        {% for id, summary in summaries %}
+            <!-- CONTENT_PART -->
+            {% set totalDuration = totalDuration + summary.duration %}
+            {% set totalInternalRate = totalInternalRate + summary.rate_internal %}
+            {% set totalRate = totalRate + summary.rate %}
+            {% if customerCurrency is not null and customerCurrency is not same as(summary.currency) %}
+                {% set multiCurrency = true %}
+            {% endif %}
+            {% if customer is same as(null) %}
+                {% set customer = summary.customer %}
+                {% set customerCurrency = summary.currency %}
+            {% endif %}
+            {% if customer is not same as(summary.customer) %}
+                <tr class="summary">
+                    {% block summary_customer_row_start %}{% endblock %}
+                    {% for summaryColumn in summaryColumns %}
+                        {% if summaryColumn == 'duration' %}
+                            <td class="totals duration" align="right">{{ customerDuration|duration(decimal) }}</td>
+                        {% elseif summaryColumn == 'internalRate' %}
+                            <td class="totals cost" align="right">{{ customerInternalRate|money(customerCurrency) }}</td>
+                        {% elseif summaryColumn == 'rate' %}
+                            <td class="totals cost right" align="right">{{ customerRate|money(customerCurrency) }}</td>
+                        {% else %}
+                            <td></td>
+                        {% endif %}
+                    {% endfor %}
+                    {% block summary_customer_row_end %}{% endblock %}
+                </tr>
+                {% set customerCurrency = summary.currency %}
+                {% set customer = summary.customer %}
+                {% set customerDuration = 0 %}
+                {% set customerRate = 0 %}
+                {% set customerInternalRate = 0 %}
+                {% set customerCount = 0 %}
+            {% endif %}
+            <tr class="{{ cycle(['odd', 'even'], customerCount) }}">
+                {% block summary_project_row_start %}{% endblock %}
+                {% for summaryColumn in summaryColumns %}
+                    {% if summaryColumn == 'customer' %}
+                        <!-- <td>{{ summary.customer }}</td> -->
+                    {% elseif summaryColumn == 'project' %}
+                        <td>{{ summary.project }}</td>
+                    {% elseif summaryColumn == 'timeBudget' %}
+                        <td class="center">
+                            {% if budgets[id] is defined and budgets[id].time_left > 0 %}
+                                {{ budgets[id].time_left|duration(decimal) }}
+                            {% endif %}
+                        </td>
+                    {% elseif summaryColumn == 'budget' %}
+                        <td class="center">
+                            {% if budgets[id] is defined and budgets[id].money_left > 0 %}
+                                {{ budgets[id].money_left|money(summary.currency) }}
+                            {% endif %}
+                        </td>
+                    {% elseif summaryColumn == 'hourlyRate' %}
+                        {% set summaryHourlyRate = summary.duration/3600 %}
+                        <td class="cost">{{ summaryHourlyRate > 0 ? (summary.rate/summaryHourlyRate)|money(summary.currency) : '' }}</td>
+                    {% elseif summaryColumn == 'duration' %}
+                        <td class="duration" align="right">{{ summary.duration|duration(decimal) }}</td>
+                    {% elseif summaryColumn == 'internalRate' %}
+                        <td class="cost" align="right">{{ summary.rate_internal|money(summary.currency) }}</td>
+                    {% elseif summaryColumn == 'rate' %}
+                        <td class="cost" align="right">{{ summary.rate|money(summary.currency) }}</td>
+                    {% endif %}
+                {% endfor %}
+                {% block summary_project_row_end %}{% endblock %}
+            </tr>
+            {% set customerDuration = customerDuration + summary.duration %}
+            {% set customerRate = customerRate + summary.rate %}
+            {% set customerInternalRate = customerInternalRate + summary.rate_internal %}
+            {% set customerCount = customerCount + 1 %}
+        {% endfor %}
+        {% if showTotalSummary and not multiCurrency %}
+        <tr class="{% if not showCustomerSummary %}summary{% else %}summary-total{% endif %}">
+            {% block summary_summary_row_start %}{% endblock %}
+            <td class="totals" colspan="1">
+                {{ 'sum.total'|trans }}
+            </td>
+            {% for summaryColumn in summaryColumns %}
+                {% if summaryColumn == 'duration' %}
+                    <td class="totals duration">{{ totalDuration|duration(decimal) }}</td>
+                {% elseif summaryColumn == 'internalRate' %}
+                        <td class="totals cost">{{ totalInternalRate|money(customerCurrency) }}</td>
+                {% elseif summaryColumn == 'rate' %}
+                    <td class="totals cost">{{ totalRate|money(customerCurrency) }}</td>
+                {% elseif summaryColumn not in ['customer', 'project'] %}
+                    <td></td>
+                {% endif %}
+            {% endfor %}
+            {% block summary_summary_row_end %}{% endblock %}
+        </tr>
+        {% endif %}
+        </tbody>
+    </table>
 
   {% endblock %}
 {% endblock %}
